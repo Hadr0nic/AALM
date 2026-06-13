@@ -21,10 +21,12 @@ app.mount(
 
 # Startup
 init_db()
+
 @app.on_event("startup")
 def startup_event():
     start_background_threads()
-
+    # Register main loop for thread-safe broadcasting
+    hub.set_main_loop(asyncio.get_running_loop())
 
 
 # Frontend
@@ -40,9 +42,21 @@ def health():
 
 
 # API
+from app.realtime import hub
+import time
+
 @app.post("/event")
-def ingest_event(event: EventIn):
-    storage.add_event(Event(**event.dict()))
+async def ingest_event(event: EventIn):
+    e = Event(**event.dict())
+    storage.add_event(e)
+
+    # 🔥 immediate push
+    await hub.broadcast({
+        "type": "event",
+        "timestamp": e.timestamp,
+        "value": e.value
+    })
+
     return {"status": "ok"}
 
 
@@ -82,33 +96,17 @@ def summary():
 
 
 # WebSocket
+from app.realtime import hub
+
 @app.websocket("/ws/events")
 async def ws_events(ws: WebSocket):
-
+    print("WS HANDLER ENTERED")
     await ws.accept()
+    await hub.connect(ws)
 
-    last_timestamp = 0
+    try:
+        while True:
+            await asyncio.sleep(60)  # keep-alive only
 
-    while True:
-
-        events = storage.get_events(WINDOW_SIZE)
-
-        new_events = [
-            e
-            for e in events
-            if e[0] > last_timestamp
-        ]
-
-        if new_events:
-
-            await ws.send_json([
-                {
-                    "timestamp": e[0],
-                    "value": e[1]
-                }
-                for e in new_events
-            ])
-
-            last_timestamp = new_events[-1][0]
-
-        await asyncio.sleep(0.5)
+    finally:
+        await hub.disconnect(ws)

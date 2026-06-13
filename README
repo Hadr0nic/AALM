@@ -1,10 +1,61 @@
-Adaptive Activity & Load Monitor
+# AALM (Adaptive Activity & Load Monitor)
 
-Author: Alireza Foulagar
+## Overview
+AALM is a real-time event monitoring and burst detection system built with FastAPI, SQLite, and a lightweight WebSocket-based frontend dashboard using Chart.js.
 
-This project via analyzer.py collects events, calculate the event,
-and detects anaomalies (here called Burst of Activities) using a adaptive threshold
-with Storing Events & Bursts via a simple HTML we visualize real-time event activities
+It continuously ingests events, computes real-time activity rates, and detects anomalous “bursts” using an adaptive statistical threshold.
 
-how to run
-uvicorn AALM.main:app --reload
+The system is designed to simulate and analyze streaming event loads in real time.
+
+## Features
+Real-time event ingestion API (/event)
+Live event stream via WebSocket (/ws/events)
+Adaptive burst detection using rolling statistics
+Dynamic thresholding (mean + 2 standard deviations)
+Persistent storage using SQLite
+Live dashboard visualization
+Background simulation generator (fake event stream)
+Burst analytics summary API (/summary)
+
+## Architecture
+Backend
+Built with FastAPI
+SQLite database for persistence
+Thread-based background processing
+Two loops:
+Event generator (simulated load)
+Analysis engine (rate + burst detection)
+
+## Core Logic
+Rate computation: sliding window aggregation (default 60s)
+Thresholding: mean + 2σ over historical rates
+Burst detection: state machine tracking high-activity intervals
+
+## Frontend
+Simple HTML + JS dashboard
+Real-time updates via WebSocket
+Visualization via Chart.js
+
+## How to Run Locally
+pip install -r requirements.txt
+uvicorn app.main:app --reload
+
+Open:
+
+http://localhost:8000
+
+## Deployment
+
+Deployed on:
+
+Render
+
+Live:
+
+https://aalm-dj9f.onrender.com
+
+## Database
+
+SQLite database:s
+events(timestamp, source, value)
+bursts(start, end, peak, total_events)

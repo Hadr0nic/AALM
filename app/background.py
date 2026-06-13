@@ -1,6 +1,7 @@
 import time
 import random
 import threading
+import asyncio
 
 from app.models import Event, Burst
 from app.storage import storage
@@ -14,13 +15,17 @@ rate_history = []
 
 
 # Fake event generator
+from app.realtime import hub   # add this import
+
+# Fake event generator
 def fake_event_loop():
     while True:
-        storage.add_event(Event(
+        event = Event(
             timestamp=time.time(),
             source="simulator",
             value=random.randint(1, 5)
-        ))
+        )
+        storage.add_event(event) 
         time.sleep(1)
 
 

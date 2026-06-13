@@ -6,48 +6,14 @@
 </head>
 
 <body>
-<h2>Real-Time Event Rate</h2>
+<h2>Real-Time Event Stream</h2>
 
 <canvas id="chart"></canvas>
 
 <script>
+const MAX_POINTS = 50;
 
-function connectWS() {
-    const ws = new WebSocket(
-        (location.protocol === "https:" ? "wss://" : "ws://") +
-        location.host +
-        "/ws/events"
-    );
-
-    ws.onmessage = (msg) => {
-        const events = JSON.parse(msg.data);
-
-        events.forEach(e => {
-            chart.data.labels.push(
-                new Date(e.timestamp * 1000).toLocaleTimeString()
-            );
-
-            chart.data.datasets[0].data.push(e.value);
-
-            if (chart.data.labels.length > MAX_POINTS) {
-                chart.data.labels.shift();
-                chart.data.datasets[0].data.shift();
-            }
-        });
-
-        chart.update();
-    };
-
-    ws.onclose = () => {
-        console.log("WS closed — reconnecting...");
-        setTimeout(connectWS, 1000);
-    };
-
-    return ws;
-}
-
-connectWS();
-
+// Chart setup
 const ctx = document.getElementById("chart").getContext("2d");
 
 const chart = new Chart(ctx, {
@@ -64,31 +30,68 @@ const chart = new Chart(ctx, {
     },
     options: {
         animation: {
-            duration: 200
-        }
+            duration: 150
+        },
+        responsive: true,
+        maintainAspectRatio: true
     }
 });
 
-const MAX_POINTS = 50;
+// WebSocket logic
+function connectWS() {
+    const ws = new WebSocket(
+        (location.protocol === "https:" ? "wss://" : "ws://") +
+        location.host +
+        "/ws/events"
+    );
 
-ws.onmessage = (msg) => {
-    const events = JSON.parse(msg.data);
+    ws.onopen = () => {
+        console.log("WS OPEN");
+    };
 
-    events.forEach(e => {
+    ws.onmessage = (msg) => {
+        console.log("WS RAW:", msg.data);
+
+        let e;
+        try {
+            e = JSON.parse(msg.data);
+        } catch (err) {
+            console.error("Invalid JSON:", err);
+            return;
+        }
+
+        console.log("PARSED:", e);
+
+        // ignore non-event messages if any
+        if (!e.timestamp || e.value === undefined) return;
+
         chart.data.labels.push(
             new Date(e.timestamp * 1000).toLocaleTimeString()
         );
 
         chart.data.datasets[0].data.push(e.value);
 
+        // keep fixed window size
         if (chart.data.labels.length > MAX_POINTS) {
             chart.data.labels.shift();
             chart.data.datasets[0].data.shift();
         }
-    });
 
-    chart.update();
-};
+        chart.update();
+    };
+
+    ws.onerror = (err) => {
+        console.log("WS ERROR:", err);
+    };
+
+    ws.onclose = () => {
+        console.log("WS CLOSED — reconnecting...");
+        setTimeout(connectWS, 1000);
+    };
+}
+
+// start connection
+connectWS();
 </script>
 
 </body>

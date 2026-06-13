@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AALM Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+<h2>Real-Time Event Rate</h2>
+
+<canvas id="chart"></canvas>
+
+<script>
+
+function connectWS() {
+    const ws = new WebSocket(
+        (location.protocol === "https:" ? "wss://" : "ws://") +
+        location.host +
+        "/ws/events"
+    );
+
+    ws.onmessage = (msg) => {
+        const events = JSON.parse(msg.data);
+
+        events.forEach(e => {
+            chart.data.labels.push(
+                new Date(e.timestamp * 1000).toLocaleTimeString()
+            );
+
+            chart.data.datasets[0].data.push(e.value);
+
+            if (chart.data.labels.length > MAX_POINTS) {
+                chart.data.labels.shift();
+                chart.data.datasets[0].data.shift();
+            }
+        });
+
+        chart.update();
+    };
+
+    ws.onclose = () => {
+        console.log("WS closed — reconnecting...");
+        setTimeout(connectWS, 1000);
+    };
+
+    return ws;
+}
+
+connectWS();
+
+const ctx = document.getElementById("chart").getContext("2d");
+
+const chart = new Chart(ctx, {
+    type: "line",
+    data: {
+        labels: [],
+        datasets: [{
+            label: "Events",
+            data: [],
+            borderColor: "blue",
+            tension: 0.3,
+            pointRadius: 2
+        }]
+    },
+    options: {
+        animation: {
+            duration: 200
+        }
+    }
+});
+
+const MAX_POINTS = 50;
+
+ws.onmessage = (msg) => {
+    const events = JSON.parse(msg.data);
+
+    events.forEach(e => {
+        chart.data.labels.push(
+            new Date(e.timestamp * 1000).toLocaleTimeString()
+        );
+
+        chart.data.datasets[0].data.push(e.value);
+
+        if (chart.data.labels.length > MAX_POINTS) {
+            chart.data.labels.shift();
+            chart.data.datasets[0].data.shift();
+        }
+    });
+
+    chart.update();
+};
+</script>
+
+</body>
+</html>

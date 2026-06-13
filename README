@@ -1,0 +1,10 @@
+Adaptive Activity & Load Monitor
+
+Author: Alireza Foulagar
+
+This project via analyzer.py collects events, calculate the event,
+and detects anaomalies (here called Burst of Activities) using a adaptive threshold
+with Storing Events & Bursts via a simple HTML we visualize real-time event activities
+
+how to run
+uvicorn AALM.main:app --reload
